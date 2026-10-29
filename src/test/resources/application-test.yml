@@ -1,0 +1,12 @@
+# Tests: in-memory H2 shared by all test contexts in the JVM.
+spring:
+  datasource:
+    url: jdbc:h2:mem:memolake-test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;LOCK_TIMEOUT=10000;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+    hikari:
+      maximum-pool-size: 20
+
+logging:
+  level:
+    com.memolake: WARN

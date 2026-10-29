@@ -1,0 +1,18 @@
+# Production: PostgreSQL. Connection settings come from environment variables.
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:memolake}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_USERNAME:memolake}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASSWORD:}}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+
+server:
+  # Honour X-Forwarded-* headers when running behind a reverse proxy.
+  forward-headers-strategy: ${SERVER_FORWARD_HEADERS_STRATEGY:native}
+
+logging:
+  structured:
+    format:
+      # JSON log lines (Elastic Common Schema) for log collectors.
+      console: ${LOG_FORMAT:ecs}

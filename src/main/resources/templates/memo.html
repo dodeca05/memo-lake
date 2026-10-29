@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${memo.name})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: header}"></header>
+<main class="container">
+    <nav class="breadcrumb" aria-label="위치">
+        <a th:href="@{/web/topic}">토픽</a>
+        <span aria-hidden="true">/</span>
+        <a th:href="@{/web/topic/{t}(t=${topic.name})}" th:text="${topic.name}">topic</a>
+        <span aria-hidden="true">/</span>
+        <span th:text="${memo.name}">memo</span>
+    </nav>
+    <div th:replace="~{fragments/layout :: notice}"></div>
+
+    <div class="page-header">
+        <div>
+            <p class="eyebrow" th:text="${topic.name}">topic</p>
+            <h1 th:text="${memo.name}">memo</h1>
+            <dl class="meta-list">
+                <div><dt>생성</dt><dd><time th:datetime="${@webFormat.iso(memo.createdAt)}" th:text="${@webFormat.time(memo.createdAt)}">-</time></dd></div>
+                <div><dt>최근 수정</dt><dd><time th:datetime="${@webFormat.iso(memo.updatedAt)}" th:text="${@webFormat.time(memo.updatedAt)}">-</time></dd></div>
+                <div><dt>버전</dt><dd th:text="${memo.version}">1</dd></div>
+            </dl>
+        </div>
+        <div class="actions">
+            <a class="button" th:href="@{/web/topic/{t}/{m}/edit(t=${topic.name}, m=${memo.name})}">메모 수정</a>
+            <a class="button button-secondary" th:href="@{/web/topic/{t}(t=${topic.name})}">토픽으로 돌아가기</a>
+        </div>
+    </div>
+
+    <div class="viewer">
+        <div class="viewer-toolbar">
+            <button type="button" class="button button-small button-secondary" id="toggle-wrap" aria-pressed="true">줄바꿈</button>
+            <button type="button" class="button button-small button-secondary" id="toggle-json" aria-pressed="false" hidden>JSON 정렬</button>
+            <button type="button" class="button button-small button-secondary" id="copy-content">복사</button>
+        </div>
+        <!-- The newline after <pre> is dropped by the browser; it keeps a leading newline of the memo visible. -->
+        <pre class="memo-content" id="memo-content">
+<th:block th:text="${memo.content}"></th:block></pre>
+    </div>
+</main>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

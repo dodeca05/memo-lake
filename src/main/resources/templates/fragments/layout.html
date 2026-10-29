@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${title} + ' · Memo Lake'">Memo Lake</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script th:src="@{/js/app.js}" defer></script>
+</head>
+<body>
+
+<header th:fragment="header" class="site-header">
+    <div class="container header-inner">
+        <a class="brand" th:href="@{/web/main}">Memo Lake</a>
+        <nav class="site-nav" aria-label="주 메뉴">
+            <a th:href="@{/web/main}">홈</a>
+            <a th:href="@{/web/topic}">토픽</a>
+        </nav>
+    </div>
+</header>
+
+<div th:fragment="notice" th:if="${notice}" class="alert alert-success" role="status" th:text="${notice}">저장했습니다.</div>
+
+<nav th:fragment="pagination(result, path)" class="pagination" th:if="${result.totalPages > 1}" aria-label="페이지 이동">
+    <a th:if="${result.hasPrevious()}" class="button button-secondary" rel="prev"
+       th:href="@{${path}(page=${result.page - 1})}">이전</a>
+    <span th:unless="${result.hasPrevious()}" class="button button-secondary is-disabled" aria-disabled="true">이전</span>
+    <span class="pagination-status" th:text="${result.page + 1} + ' / ' + ${result.totalPages}">1 / 1</span>
+    <a th:if="${result.hasNext()}" class="button button-secondary" rel="next"
+       th:href="@{${path}(page=${result.page + 1})}">다음</a>
+    <span th:unless="${result.hasNext()}" class="button button-secondary is-disabled" aria-disabled="true">다음</span>
+</nav>
+
+<footer th:fragment="footer" class="site-footer">
+    <div class="container">
+        Memo Lake · REST <code>/api/topic</code> · MCP <code>/mcp</code>
+    </div>
+</footer>
+
+</body>
+</html>

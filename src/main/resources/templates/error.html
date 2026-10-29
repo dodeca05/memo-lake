@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('오류')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: header}"></header>
+<main class="container">
+    <section class="error-page">
+        <p class="eyebrow" th:text="${status}">500</p>
+        <h1 th:text="${message != null and !#strings.isEmpty(message)} ? ${message} : ${error}">오류가 발생했습니다.</h1>
+        <div class="actions">
+            <a class="button" th:href="@{/web/topic}">토픽 목록</a>
+            <a class="button button-secondary" th:href="@{/web/main}">홈</a>
+        </div>
+    </section>
+</main>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

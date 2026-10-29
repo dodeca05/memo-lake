@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${topic.name})}"></head>
+<body>
+<header th:replace="~{fragments/layout :: header}"></header>
+<main class="container">
+    <nav class="breadcrumb" aria-label="위치">
+        <a th:href="@{/web/topic}">토픽</a>
+        <span aria-hidden="true">/</span>
+        <span th:text="${topic.name}">topic</span>
+    </nav>
+    <div th:replace="~{fragments/layout :: notice}"></div>
+
+    <div class="page-header">
+        <div>
+            <h1 th:text="${topic.name}">topic</h1>
+            <p class="lead" th:text="${#strings.isEmpty(topic.description)} ? '설명 없음' : ${topic.description}">설명</p>
+            <p class="meta" th:text="'메모 ' + ${topic.memos.totalElements} + '개 · 최근 수정 순'">메모 0개</p>
+        </div>
+    </div>
+
+    <details class="panel" th:open="${showMemoForm}">
+        <summary class="button">메모 발행</summary>
+        <form class="form" method="post" th:action="@{/web/topic/{name}(name=${topic.name})}" th:object="${memoForm}"
+              novalidate>
+            <label class="field">
+                <span class="field-label">새 메모 이름</span>
+                <input type="text" th:field="*{memoName}" maxlength="100" required autocomplete="off"
+                       placeholder="예: agent-a-progress">
+                <span class="field-hint" th:text="${@webFormat.nameRule()}">규칙</span>
+                <span class="field-error" th:if="${#fields.hasErrors('memoName')}" th:errors="*{memoName}">오류</span>
+            </label>
+            <div class="actions">
+                <button type="submit" class="button">에디터 열기</button>
+            </div>
+        </form>
+    </details>
+
+    <ul class="list" th:unless="${#lists.isEmpty(topic.memos.content)}">
+        <li th:each="m : ${topic.memos.content}">
+            <a class="list-item" th:href="@{/web/topic/{t}/{m}(t=${topic.name}, m=${m.name})}">
+                <span class="list-main">
+                    <span class="list-title" th:text="${m.name}">memo</span>
+                </span>
+                <span class="list-side meta">
+                    <time th:datetime="${@webFormat.iso(m.updatedAt)}" th:text="${@webFormat.time(m.updatedAt)}">-</time>
+                </span>
+            </a>
+        </li>
+    </ul>
+    <p class="empty" th:if="${#lists.isEmpty(topic.memos.content)}">이 토픽에는 아직 메모가 없습니다.</p>
+
+    <nav th:replace="~{fragments/layout :: pagination(${topic.memos}, ${'/web/topic/' + #uris.escapePathSegment(topic.name)})}"></nav>
+</main>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

@@ -1,0 +1,66 @@
+# Settings shared by all profiles. Profile files: application-dev.yml (H2), application-prod.yml (PostgreSQL).
+spring:
+  application:
+    name: memolake
+  profiles:
+    # Without SPRING_PROFILES_ACTIVE the app runs with the embedded H2 database.
+    default: dev
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Flyway owns the schema; Hibernate only checks that the entities match it.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  ai:
+    mcp:
+      server:
+        name: memo-lake
+        version: 0.1.0
+        type: SYNC
+        protocol: STREAMABLE
+        streamable-http:
+          mcp-endpoint: /mcp
+        capabilities:
+          tool: true
+          resource: false
+          prompt: false
+          completion: false
+        instructions: >-
+          Memo Lake is a shared memo store for AI agents. Memos are plain-text documents grouped by topic.
+          Use list_topics / get_topic to discover what exists, get_memo to read, create_topic / create_memo to add,
+          replace_memo to overwrite and append_memo to add text to the end of a memo (no newline is inserted).
+          Use one memo per agent (e.g. "agent-a-progress") for logs, and expectedVersion when overwriting shared memos.
+
+server:
+  port: ${SERVER_PORT:8080}
+  # Local-only by default. The Docker image sets SERVER_ADDRESS=0.0.0.0.
+  address: ${SERVER_ADDRESS:127.0.0.1}
+  servlet:
+    encoding:
+      charset: UTF-8
+    session:
+      # Sessions only carry one-time web notices; never put the session id into URLs.
+      tracking-modes: cookie
+  tomcat:
+    # Web editor form posts carry the memo URL-encoded (up to ~3x the UTF-8 size). Keep above 3 x max-content-size.
+    max-http-form-post-size: 4MB
+
+memolake:
+  memo:
+    # Maximum memo body size in UTF-8 bytes.
+    max-content-size: ${MEMOLAKE_MAX_CONTENT_SIZE:1MB}
+  security:
+    # Host names accepted in the Host header. Use "*" to accept any host (e.g. behind a reverse proxy that checks it).
+    allowed-hosts: ${MEMOLAKE_ALLOWED_HOSTS:localhost,127.0.0.1,::1}
+    # Optional shared token. When set, clients must send "Authorization: Bearer <token>".
+    access-token: ${MEMOLAKE_ACCESS_TOKEN:}
+
+logging:
+  level:
+    root: INFO

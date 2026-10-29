@@ -1,0 +1,42 @@
+# Memo Lake + PostgreSQL.
+#   docker compose up -d --build
+# The app is published on 127.0.0.1:8080 only. PostgreSQL is not published to the host.
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: memolake
+      POSTGRES_USER: memolake
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-memolake}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U memolake -d memolake"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build: .
+    image: memolake:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: memolake
+      DB_USERNAME: memolake
+      DB_PASSWORD: ${DB_PASSWORD:-memolake}
+      # Host names clients use to reach the server (see README "보안").
+      MEMOLAKE_ALLOWED_HOSTS: ${MEMOLAKE_ALLOWED_HOSTS:-localhost,127.0.0.1,::1}
+      # Set to require "Authorization: Bearer <token>" on every request.
+      MEMOLAKE_ACCESS_TOKEN: ${MEMOLAKE_ACCESS_TOKEN:-}
+    ports:
+      - "127.0.0.1:${MEMOLAKE_PORT:-8080}:8080"
+
+volumes:
+  postgres-data:

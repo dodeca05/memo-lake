@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${memoName} + ' 편집')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: header}"></header>
+<main class="container">
+    <nav class="breadcrumb" aria-label="위치">
+        <a th:href="@{/web/topic}">토픽</a>
+        <span aria-hidden="true">/</span>
+        <a th:href="@{/web/topic/{t}(t=${topic.name})}" th:text="${topic.name}">topic</a>
+        <span aria-hidden="true">/</span>
+        <span th:text="${memoName}">memo</span>
+    </nav>
+
+    <div class="page-header">
+        <div>
+            <p class="eyebrow" th:text="${topic.name}">topic</p>
+            <h1 th:text="${memoName}">memo</h1>
+            <p class="meta" th:if="${memo}" th:text="'기존 메모 수정 · 버전 ' + ${memo.version} + ' · 저장하면 내용 전체를 바꿉니다'">수정</p>
+            <p class="meta" th:unless="${memo}">새 메모 작성</p>
+        </div>
+    </div>
+
+    <div class="alert alert-error" th:if="${error}" role="alert">
+        <p th:text="${error}">오류</p>
+        <p th:if="${conflict}">아래에는 작성하던 내용이 그대로 남아 있습니다.
+            <a target="_blank" rel="noopener" th:href="@{/web/topic/{t}/{m}(t=${topic.name}, m=${memoName})}">최신 내용 보기(새 탭)</a>
+            를 확인한 뒤, 다시 저장하면 최신 버전을 덮어씁니다.</p>
+    </div>
+
+    <form class="form editor-form" method="post" th:action="@{/web/topic/{t}/{m}/edit(t=${topic.name}, m=${memoName})}">
+        <input type="hidden" name="version" th:if="${version != null}" th:value="${version}">
+        <label class="field">
+            <span class="field-label">내용</span>
+            <!-- The newline after <textarea> is dropped by the browser; it keeps a leading newline of the memo. -->
+            <textarea name="content" class="editor" rows="24" spellcheck="false">
+[[${content}]]</textarea>
+            <span class="field-hint">텍스트, Markdown, JSON, 코드 등 어떤 형식이든 그대로 저장됩니다. 줄바꿈은 LF(\n)로 저장됩니다.</span>
+        </label>
+        <div class="actions">
+            <button type="submit" class="button">저장</button>
+            <a class="button button-secondary" th:if="${memo}" th:href="@{/web/topic/{t}/{m}(t=${topic.name}, m=${memoName})}">취소</a>
+            <a class="button button-secondary" th:unless="${memo}" th:href="@{/web/topic/{t}(t=${topic.name})}">취소</a>
+        </div>
+    </form>
+</main>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

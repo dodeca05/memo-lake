@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('토픽')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: header}"></header>
+<main class="container">
+    <div th:replace="~{fragments/layout :: notice}"></div>
+
+    <div class="page-header">
+        <div>
+            <h1>토픽</h1>
+            <p class="meta" th:text="'전체 ' + ${topics.totalElements} + '개 · 최근 메모 수정 순'">전체 0개</p>
+        </div>
+    </div>
+
+    <details class="panel" th:open="${showTopicForm}">
+        <summary class="button">새 토픽 만들기</summary>
+        <form class="form" method="post" th:action="@{/web/topic}" th:object="${topicForm}" novalidate>
+            <div class="alert alert-error" th:if="${#fields.hasGlobalErrors()}" role="alert">
+                <p th:each="err : ${#fields.globalErrors()}" th:text="${err}">오류</p>
+            </div>
+            <label class="field">
+                <span class="field-label">이름</span>
+                <input type="text" th:field="*{name}" maxlength="100" required autocomplete="off"
+                       placeholder="예: backend-project">
+                <span class="field-hint" th:text="${@webFormat.nameRule()}">규칙</span>
+                <span class="field-error" th:if="${#fields.hasErrors('name')}" th:errors="*{name}">오류</span>
+            </label>
+            <label class="field">
+                <span class="field-label">설명</span>
+                <input type="text" th:field="*{description}" maxlength="1000" autocomplete="off"
+                       placeholder="이 토픽에서 다루는 내용">
+                <span class="field-error" th:if="${#fields.hasErrors('description')}" th:errors="*{description}">오류</span>
+            </label>
+            <div class="actions">
+                <button type="submit" class="button">만들기</button>
+            </div>
+        </form>
+    </details>
+
+    <ul class="list" th:unless="${#lists.isEmpty(topics.content)}">
+        <li th:each="t : ${topics.content}">
+            <a class="list-item" th:href="@{/web/topic/{name}(name=${t.name})}">
+                <span class="list-main">
+                    <span class="list-title" th:text="${t.name}">topic</span>
+                    <span class="list-text" th:text="${#strings.isEmpty(t.description)} ? '설명 없음' : ${t.description}">설명</span>
+                </span>
+                <span class="list-side meta">
+                    <time th:if="${t.lastMemoModifiedAt}" th:datetime="${@webFormat.iso(t.lastMemoModifiedAt)}"
+                          th:text="${@webFormat.time(t.lastMemoModifiedAt)}">-</time>
+                    <span th:unless="${t.lastMemoModifiedAt}">메모 없음</span>
+                </span>
+            </a>
+        </li>
+    </ul>
+    <p class="empty" th:if="${#lists.isEmpty(topics.content)}">토픽이 없습니다.</p>
+
+    <nav th:replace="~{fragments/layout :: pagination(${topics}, '/web/topic')}"></nav>
+</main>
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>
