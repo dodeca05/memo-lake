@@ -7,8 +7,13 @@ import com.memolake.application.dto.MemoDetail;
 import com.memolake.application.dto.TopicInfo;
 import com.memolake.common.exception.ErrorCode;
 import com.memolake.common.exception.MemoLakeException;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -28,12 +33,22 @@ public class WebController {
     static final int PAGE_SIZE = 10;
     static final int RECENT_TOPIC_COUNT = 3;
 
+    /**
+     * Policy for a memo shown as an HTML document (see {@link #memoHtml}). {@code sandbox} gives the document an
+     * opaque origin and disables scripts, forms and plugins, so the memo cannot read cookies or call the API.
+     * Images, styles, fonts and media may still be loaded so that a normal HTML page looks right.
+     */
+    static final String MEMO_HTML_CSP = "sandbox; default-src 'none'; img-src * data: blob:; "
+            + "style-src * 'unsafe-inline'; font-src * data:; media-src *; frame-ancestors 'self'";
+
     private final TopicService topicService;
     private final MemoService memoService;
+    private final MarkdownRenderer markdownRenderer;
 
-    public WebController(TopicService topicService, MemoService memoService) {
+    public WebController(TopicService topicService, MemoService memoService, MarkdownRenderer markdownRenderer) {
         this.topicService = topicService;
         this.memoService = memoService;
+        this.markdownRenderer = markdownRenderer;
     }
 
     @GetMapping("/")
@@ -91,11 +106,40 @@ public class WebController {
         return topicPage(topicName, 0, model);
     }
 
+    /**
+     * @param view how to show the content ({@code raw}, {@code markdown} or {@code html}); when missing or unknown,
+     *             {@link MemoView#detect} picks one from the content
+     */
     @GetMapping("/web/topic/{topicName}/{memoName}")
-    public String memo(@PathVariable String topicName, @PathVariable String memoName, Model model) {
+    public String memo(@PathVariable String topicName, @PathVariable String memoName,
+                       @RequestParam(required = false) String view, Model model) {
+        MemoDetail memo = memoService.getMemo(topicName, memoName);
         model.addAttribute("topic", topicService.getTopicInfo(topicName));
-        model.addAttribute("memo", memoService.getMemo(topicName, memoName));
+        model.addAttribute("memo", memo);
+        model.addAttribute("view", MemoView.parse(view).orElseGet(() -> MemoView.detect(memo.content())));
+        model.addAttribute("views", MemoView.values());
+        model.addAttribute("markdownHtml", markdownRenderer.render(memo.content()));
         return "memo";
+    }
+
+    /**
+     * The memo content served as an HTML document for the "HTML" view, which embeds it in a sandboxed
+     * {@code <iframe>}. The headers set by {@code HttpSecurityFilter} are replaced here: the page must be framable
+     * by this site, and its own policy is the strict {@link #MEMO_HTML_CSP}.
+     */
+    @GetMapping("/web/topic/{topicName}/{memoName}/html")
+    public void memoHtml(@PathVariable String topicName, @PathVariable String memoName, HttpServletResponse response)
+            throws IOException {
+        MemoDetail memo = memoService.getMemo(topicName, memoName);
+        response.setHeader("Content-Security-Policy", MEMO_HTML_CSP);
+        response.setHeader("X-Frame-Options", "SAMEORIGIN");
+        response.setHeader("Referrer-Policy", "no-referrer");
+        response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store");
+        response.setContentType(MediaType.TEXT_HTML_VALUE);
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+        byte[] body = memo.content().getBytes(StandardCharsets.UTF_8);
+        response.setContentLength(body.length);
+        response.getOutputStream().write(body);
     }
 
     /** Editor: edits the memo if it exists, otherwise creates it. */

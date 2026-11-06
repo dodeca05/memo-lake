@@ -19,6 +19,7 @@ repositories {
 
 ext {
     set('springAiVersion', '2.0.2')
+    set('commonmarkVersion', '0.32.0')
 }
 
 dependencyManagement {
@@ -34,6 +35,15 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation 'org.springframework.boot:spring-boot-starter-flyway'
     implementation 'org.springframework.ai:spring-ai-starter-mcp-server-webmvc'
+
+    // Memo viewer: Markdown -> HTML (commonmark-java, GitHub flavoured extensions) sanitized with jsoup.
+    implementation "org.commonmark:commonmark:${commonmarkVersion}"
+    implementation "org.commonmark:commonmark-ext-gfm-tables:${commonmarkVersion}"
+    implementation "org.commonmark:commonmark-ext-gfm-strikethrough:${commonmarkVersion}"
+    implementation "org.commonmark:commonmark-ext-autolink:${commonmarkVersion}"
+    implementation "org.commonmark:commonmark-ext-task-list-items:${commonmarkVersion}"
+    implementation "org.commonmark:commonmark-ext-heading-anchor:${commonmarkVersion}"
+    implementation 'org.jsoup:jsoup:1.24.1'
 
     runtimeOnly 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly 'com.h2database:h2'

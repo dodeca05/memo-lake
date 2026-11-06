@@ -29,15 +29,31 @@
         </div>
     </div>
 
-    <div class="viewer">
+    <div class="viewer" id="memo-viewer">
         <div class="viewer-toolbar">
-            <button type="button" class="button button-small button-secondary" id="toggle-wrap" aria-pressed="true">줄바꿈</button>
-            <button type="button" class="button button-small button-secondary" id="toggle-json" aria-pressed="false" hidden>JSON 정렬</button>
+            <!-- Links work without JavaScript (?view=...); app.js switches panes in place instead. -->
+            <nav class="segmented" aria-label="표시 방식">
+                <a th:each="v : ${views}"
+                   th:href="@{/web/topic/{t}/{m}(t=${topic.name}, m=${memo.name}, view=${v.key})}"
+                   th:text="${v.label}" th:attr="data-view=${v.key}, aria-current=${v == view} ? 'page' : null"
+                   th:classappend="${v == view} ? 'is-active'">raw</a>
+            </nav>
+            <span class="toolbar-spacer"></span>
+            <span class="raw-tools" id="raw-tools" th:hidden="${view.name() != 'RAW'}">
+                <button type="button" class="button button-small button-secondary" id="toggle-wrap" aria-pressed="true">줄바꿈</button>
+                <button type="button" class="button button-small button-secondary" id="toggle-json" aria-pressed="false" hidden>JSON 정렬</button>
+            </span>
             <button type="button" class="button button-small button-secondary" id="copy-content">복사</button>
         </div>
         <!-- The newline after <pre> is dropped by the browser; it keeps a leading newline of the memo visible. -->
-        <pre class="memo-content" id="memo-content">
+        <pre class="memo-content" id="memo-content" th:hidden="${view.name() != 'RAW'}">
 <th:block th:text="${memo.content}"></th:block></pre>
+        <!-- Sanitized by MarkdownRenderer: only allow-listed tags and attributes reach the page. -->
+        <div class="memo-markdown" id="memo-markdown" th:utext="${markdownHtml}" th:hidden="${view.name() != 'MARKDOWN'}"></div>
+        <!-- The HTML document is served separately with a "sandbox" CSP; the frame is loaded only when selected. -->
+        <iframe class="memo-html" id="memo-html" sandbox="" title="HTML로 표시한 메모" referrerpolicy="no-referrer"
+                th:attr="data-src=@{/web/topic/{t}/{m}/html(t=${topic.name}, m=${memo.name})}, src=${view.name() == 'HTML'} ? @{/web/topic/{t}/{m}/html(t=${topic.name}, m=${memo.name})} : null"
+                th:hidden="${view.name() != 'HTML'}"></iframe>
     </div>
 </main>
 <footer th:replace="~{fragments/layout :: footer}"></footer>

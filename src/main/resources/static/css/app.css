@@ -40,6 +40,9 @@
 
 * { box-sizing: border-box; }
 
+/* Author display rules (e.g. .button { display: inline-flex }) must not override the hidden attribute. */
+[hidden] { display: none !important; }
+
 html { -webkit-text-size-adjust: 100%; }
 
 body {
@@ -192,4 +195,66 @@ textarea.editor { font-family: var(--mono); font-size: 0.9rem; line-height: 1.5;
     .page-header .actions { width: 100%; }
     .page-header .actions .button { flex: 1; }
     .memo-content { padding: 12px; font-size: 0.85rem; }
+}
+
+/* Memo viewer: view switch (raw / Markdown / HTML) */
+.toolbar-spacer { flex: 1; }
+.raw-tools { display: inline-flex; gap: 6px; }
+.segmented { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius);
+             background: var(--surface); overflow: hidden; }
+.segmented a {
+    display: inline-flex; align-items: center; min-height: 28px; padding: 0 12px;
+    color: var(--text-muted); font-size: 0.85rem; font-weight: 500; text-decoration: none; white-space: nowrap;
+}
+.segmented a + a { border-left: 1px solid var(--border); }
+.segmented a:hover { color: var(--text); background: var(--surface-muted); }
+.segmented a.is-active { color: var(--accent-contrast); background: var(--accent); }
+.segmented a:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.memo-html { display: block; width: 100%; height: 70vh; min-height: 320px; border: 0; background: #ffffff;
+             resize: vertical; }
+
+/* Memo viewer: rendered Markdown */
+.memo-markdown { padding: 20px 24px; overflow-wrap: anywhere; line-height: 1.65; }
+.memo-markdown > :first-child { margin-top: 0; }
+.memo-markdown > :last-child { margin-bottom: 0; }
+.memo-markdown h1, .memo-markdown h2, .memo-markdown h3,
+.memo-markdown h4, .memo-markdown h5, .memo-markdown h6 { margin: 1.5em 0 0.6em; font-weight: 650; line-height: 1.3; }
+.memo-markdown h1 { font-size: 1.65rem; padding-bottom: 0.3em; border-bottom: 1px solid var(--border); }
+.memo-markdown h2 { font-size: 1.35rem; padding-bottom: 0.3em; border-bottom: 1px solid var(--border); }
+.memo-markdown h3 { font-size: 1.15rem; }
+.memo-markdown h4 { font-size: 1.02rem; }
+.memo-markdown h5, .memo-markdown h6 { font-size: 0.95rem; color: var(--text-muted); }
+.memo-markdown p, .memo-markdown ul, .memo-markdown ol, .memo-markdown blockquote,
+.memo-markdown pre, .memo-markdown table, .memo-markdown dl, .memo-markdown details { margin: 0 0 1em; }
+.memo-markdown ul, .memo-markdown ol { padding-left: 1.6em; }
+.memo-markdown li + li { margin-top: 0.25em; }
+.memo-markdown li > p { margin-bottom: 0.4em; }
+.memo-markdown li > ul, .memo-markdown li > ol { margin: 0.25em 0 0; }
+.memo-markdown input[type="checkbox"] { margin: 0 0.4em 0 -1.3em; vertical-align: middle; }
+.memo-markdown code { font-family: var(--mono); font-size: 0.875em; background: var(--surface-muted);
+                      padding: 0.15em 0.4em; border-radius: 4px; }
+.memo-markdown pre { background: var(--surface-muted); border: 1px solid var(--border); border-radius: var(--radius);
+                     padding: 12px 14px; overflow-x: auto; line-height: 1.5; tab-size: 4; }
+.memo-markdown pre code { background: none; padding: 0; font-size: 0.875rem; white-space: pre; }
+.memo-markdown blockquote { border-left: 4px solid var(--border); color: var(--text-muted); padding: 0.1em 1em; }
+.memo-markdown blockquote > :last-child { margin-bottom: 0; }
+.memo-markdown table { border-collapse: collapse; display: block; max-width: 100%; overflow-x: auto;
+                       font-size: 0.95rem; }
+.memo-markdown th, .memo-markdown td { border: 1px solid var(--border); padding: 6px 12px; text-align: left; }
+.memo-markdown th { background: var(--surface-muted); font-weight: 600; }
+.memo-markdown tbody tr:nth-child(even) { background: color-mix(in srgb, var(--surface-muted) 50%, transparent); }
+.memo-markdown img { max-width: 100%; height: auto; }
+.memo-markdown hr { border: 0; border-top: 1px solid var(--border); margin: 1.5em 0; }
+.memo-markdown a { word-break: break-all; }
+.memo-markdown kbd { font-family: var(--mono); font-size: 0.85em; border: 1px solid var(--border);
+                     border-bottom-width: 2px; border-radius: 4px; padding: 0.05em 0.4em; background: var(--surface-muted); }
+.memo-markdown summary { cursor: pointer; font-weight: 600; }
+.memo-markdown mark { background: #fff3a3; color: #1d2733; padding: 0 0.15em; }
+.memo-markdown dt { font-weight: 600; }
+.memo-markdown dd { margin: 0 0 0.5em 1.5em; }
+
+@media (max-width: 640px) {
+    .memo-markdown { padding: 14px; }
+    .memo-html { height: 60vh; }
 }

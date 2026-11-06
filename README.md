@@ -24,7 +24,7 @@ MCP 도구는 REST API를 HTTP로 다시 호출하지 않고, REST 컨트롤러�
 - Java 21, Spring Boot 4.1.2 (Spring MVC, Spring Data JPA / Hibernate 7, Bean Validation, Thymeleaf), Gradle 9.8
 - MCP: Spring AI 2.0.2 MCP Server (`spring-ai-starter-mcp-server-webmvc`, 공식 MCP Java SDK 2.1.0 기반), Streamable HTTP 전송
 - DB: H2 (개발), PostgreSQL (운영), Flyway 마이그레이션
-- 프론트엔드: Thymeleaf 서버 사이드 렌더링, CSS, 약간의 Vanilla JavaScript (없어도 모든 화면이 동작함)
+- 프론트엔드: Thymeleaf 서버 사이드 렌더링, CSS, 약간의 Vanilla JavaScript (없어도 모든 화면이 동작함). Markdown 렌더링은 commonmark-java 0.32 + jsoup 1.24 (서버 측)
 
 ---
 
@@ -423,12 +423,20 @@ topic (1) ──< memo (N)        memo.topic_id → topic.id
 | `/web/main` | 서비스 소개, 최근 수정된 토픽 3개, 모든 토픽 보기 |
 | `/web/topic?page=` | 토픽 목록 (10개씩, 최근 메모 수정 순), 새 토픽 만들기 |
 | `/web/topic/{topic}?page=` | 토픽 설명, 메모 목록 (10개씩, 최근 수정 순), 메모 발행 |
-| `/web/topic/{topic}/{memo}` | 메모 본문, 생성/수정 시간, 버전, 수정 / 토픽으로 돌아가기 |
+| `/web/topic/{topic}/{memo}?view=` | 메모 본문(원문 / Markdown / HTML 중 선택), 생성/수정 시간, 버전, 수정 / 토픽으로 돌아가기 |
+| `/web/topic/{topic}/{memo}/html` | 메모 본문을 HTML 문서로 그대로 응답 (HTML 보기의 샌드박스 iframe이 사용) |
 | `/web/topic/{topic}/{memo}/edit` | 공통 에디터. 메모가 있으면 수정(전체 교체), 없으면 새로 작성 |
 
-- 본문은 `<pre>`에 줄바꿈과 공백을 그대로 보여 주며, Thymeleaf가 HTML을 이스케이프하므로 메모 속 HTML/JavaScript는 실행되지 않습니다.
-  추가로 Content-Security-Policy 헤더가 인라인 스크립트를 막습니다.
-- 줄바꿈 켜기/끄기, JSON 메모의 정렬 보기, 복사 버튼을 제공합니다 (JavaScript가 없으면 원문만 보입니다). 시간은 브라우저의 지역 시간으로 표시됩니다.
+- 메모 화면 왼쪽 위에서 표시 방식을 고릅니다. `?view=raw|markdown|html`로도 지정할 수 있고, 지정하지 않으면 내용으로 고릅니다:
+  JSON처럼 보이면(`{...}`/`[...]`) 원문, `<!DOCTYPE html>`/`<html`로 시작하면 HTML, 그 외에는 Markdown.
+  - **원문**: `<pre>`에 줄바꿈과 공백을 그대로 보여 줍니다. Thymeleaf가 HTML을 이스케이프하므로 메모 속 HTML/JavaScript는 실행되지 않습니다.
+    줄바꿈 켜기/끄기, JSON 메모의 정렬 보기를 제공합니다.
+  - **Markdown**: 서버에서 commonmark-java(GFM 표, 취소선, 체크 목록, 자동 링크, 제목 id)로 렌더링하고 jsoup 허용 목록으로 정화해서 보여 줍니다.
+    `<script>`, 이벤트 핸들러, `javascript:` 링크, `style` 속성 등은 제거되고, 한 줄 개행은 GitHub 댓글처럼 `<br>`로 표시합니다.
+  - **HTML**: 본문을 `/html` 경로에서 HTML 문서로 받아 `sandbox` iframe 안에 보여 줍니다. 그 응답에는 `Content-Security-Policy: sandbox; ...` 헤더가 붙어
+    스크립트·폼이 동작하지 않고 출처가 분리되므로(opaque origin) 메모가 쿠키나 API에 접근할 수 없습니다. 이미지·스타일·폰트는 불러옵니다.
+- 표시 방식 버튼은 링크(`?view=`)라서 JavaScript 없이도 동작하고, JavaScript가 있으면 새로 고침 없이 전환하며 주소창도 함께 바꿉니다.
+  복사 버튼은 항상 원문을 복사합니다. 시간은 브라우저의 지역 시간으로 표시됩니다. 페이지 자체의 Content-Security-Policy 헤더는 인라인 스크립트를 막습니다.
 - 에디터는 저장할 때 읽어 온 버전을 함께 보냅니다. 그 사이 에이전트가 메모를 바꿨다면 저장하지 않고 충돌을 알려 주며, 작성 중이던 내용은 그대로 남습니다.
 - 브라우저는 textarea의 줄바꿈을 CRLF로 보내므로, 웹 에디터에서 저장한 메모의 줄바꿈은 LF(`\n`)로 바꿔 저장합니다. REST와 MCP로 저장한 본문은 바꾸지 않습니다.
 
@@ -465,7 +473,7 @@ src/main/java/com/memolake/
 ├── interfaces/
 │   ├── rest/                   TopicController, MemoController, ApiExceptionHandler, 본문 리더, ETag
 │   ├── mcp/                    MemoLakeMcpTools (7개 도구), McpToolResults (결과/오류 변환)
-│   └── web/                    WebController, 폼, WebExceptionHandler
+│   └── web/                    WebController, 폼, MemoView/MarkdownRenderer(표시 방식), WebExceptionHandler
 └── common/
     ├── exception/              ErrorCode, MemoLakeException, ErrorResponse (REST/MCP/웹 공통)
     └── web/                    HttpSecurityFilter, RequestLoggingFilter, AppErrorController
@@ -501,6 +509,7 @@ docker stop memolake-pg
 | `HttpErrorResponseTest` | 실제 HTTP에서 404/405/415도 공통 오류 형식, 브라우저에는 HTML 오류 화면 |
 | `MemoConcurrencyTest` | 동시 append 유실 없음, 같은 버전 동시 교체 중 하나만 성공, replace+append 동시 실행, 동시 생성 |
 | `McpServerTest` | 공식 SDK 클라이언트로 `/mcp` 연결, 도구 목록·힌트, 7개 도구, REST와 데이터 공유, 구조화 오류, MCP+REST 동시 append |
-| `WebPageTest` | 메인/목록/상세 렌더링, 페이징, XSS 이스케이프, 토픽·메모 생성, 수정, 충돌 처리, 교차 출처 차단 |
+| `WebPageTest` | 메인/목록/상세 렌더링, 페이징, XSS 이스케이프, 표시 방식(원문/Markdown/HTML) 선택·자동 선택, 샌드박스 HTML 응답 헤더, 토픽·메모 생성, 수정, 충돌 처리, 교차 출처 차단 |
+| `MarkdownRendererTest`, `MemoViewTest` | GFM 렌더링(표, 체크 목록, 코드 블록, 줄바꿈), 스크립트·이벤트 핸들러·위험한 URL 제거, 표시 방식 파싱·자동 선택 |
 | `AccessTokenTest` | 공유 토큰(Bearer, Basic), Host 허용 목록 |
 | `NameRulesTest`, `Utf8LengthTest` | 이름 규칙, NFC 정규화, UTF-8 크기 계산 |

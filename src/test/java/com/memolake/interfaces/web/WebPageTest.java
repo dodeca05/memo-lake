@@ -93,14 +93,96 @@ class WebPageTest extends IntegrationTest {
         String content = "\n<script>alert('xss')</script>\n<img src=x onerror=alert(1)>\n  {\"json\": true}\n# Markdown";
         memoService.createMemo("t", "m", content);
 
-        String html = html(mvc.perform(get("/web/topic/t/m")).andExpect(status().isOk()).andReturn());
+        String html = html(mvc.perform(get("/web/topic/t/m").param("view", "raw")).andExpect(status().isOk())
+                .andReturn());
 
         assertThat(html).doesNotContain("<script>alert", "<img src=x");
+        assertThat(markdownPane(html)).doesNotContain("script", "onerror");
         assertThat(html).contains("&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;",
                 "&lt;img src=x onerror=alert(1)&gt;", "  {&quot;json&quot;: true}\n# Markdown");
         // The browser drops one newline right after <pre>, so the leading newline of the memo survives.
         assertThat(html).contains("<pre class=\"memo-content\" id=\"memo-content\">\n\n&lt;script&gt;");
         assertThat(html).contains("메모 수정", "토픽으로 돌아가기", "href=\"/web/topic/t/m/edit\"");
+        // The raw view is selected; the other panes are present but hidden.
+        assertThat(html).contains("href=\"/web/topic/t/m?view=raw\"", "data-view=\"raw\" aria-current=\"page\"",
+                "id=\"memo-markdown\" hidden=\"hidden\"", "id=\"memo-html\"", "hidden=\"hidden\"></iframe>")
+                .doesNotContain(" src=\"/web/topic/t/m/html\"");
+    }
+
+    @Test
+    void memoPageRendersMarkdownByDefaultAndSanitizesIt() throws Exception {
+        topicService.createTopic("t", "");
+        memoService.createMemo("t", "m", """
+                # 제목
+
+                - [x] 완료
+                - [ ] 대기
+
+                | a | b |
+                |---|---|
+                | 1 | 2 |
+
+                ~~지움~~ <b>굵게</b> <script>alert(1)</script> <span onclick="x()">클릭</span>
+                [나쁜 링크](javascript:alert(1)) [다른 메모](other-memo) https://example.com/x
+                첫 줄
+                둘째 줄
+                """);
+
+        String html = html(mvc.perform(get("/web/topic/t/m")).andExpect(status().isOk()).andReturn());
+
+        assertThat(html).contains("data-view=\"markdown\" aria-current=\"page\"",
+                "<pre class=\"memo-content\" id=\"memo-content\" hidden=\"hidden\">",
+                "<div class=\"memo-markdown\" id=\"memo-markdown\">");
+        String rendered = markdownPane(html);
+        assertThat(rendered).contains(">제목</h1>", "type=\"checkbox\"", "checked", "<th>a</th>", "<td>2</td>",
+                "<del>지움</del>", "<b>굵게</b>", "<span>클릭</span>", "href=\"other-memo\"",
+                "<a href=\"https://example.com/x\">https://example.com/x</a>", "첫 줄<br>\n둘째 줄");
+        assertThat(rendered).doesNotContain("<script", "onclick", "javascript:");
+    }
+
+    @Test
+    void memoPagePicksTheDefaultViewFromTheContent() throws Exception {
+        topicService.createTopic("t", "");
+        memoService.createMemo("t", "json", "{\"a\": [1, 2]}");
+        memoService.createMemo("t", "page", "<!DOCTYPE html>\n<html><body><h1>Hi</h1></body></html>");
+
+        String json = html(mvc.perform(get("/web/topic/t/json")).andExpect(status().isOk()).andReturn());
+        assertThat(json).contains("data-view=\"raw\" aria-current=\"page\"",
+                "<pre class=\"memo-content\" id=\"memo-content\">");
+
+        String page = html(mvc.perform(get("/web/topic/t/page")).andExpect(status().isOk()).andReturn());
+        assertThat(page).contains("data-view=\"html\" aria-current=\"page\"", "sandbox=\"\"",
+                "src=\"/web/topic/t/page/html\"></iframe>")
+                .doesNotContain("<h1>Hi</h1></body>");
+
+        // An unknown value falls back to detection as well.
+        String unknown = html(mvc.perform(get("/web/topic/t/json").param("view", "pdf")).andExpect(status().isOk())
+                .andReturn());
+        assertThat(unknown).contains("data-view=\"raw\" aria-current=\"page\"");
+    }
+
+    @Test
+    void memoHtmlViewIsServedAsSandboxedDocument() throws Exception {
+        topicService.createTopic("t", "");
+        String content = "<!DOCTYPE html>\n<html><body><h1>안녕</h1><script>alert(1)</script></body></html>";
+        memoService.createMemo("t", "page", content);
+
+        MvcResult result = mvc.perform(get("/web/topic/t/page/html"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("text/html;charset=UTF-8"))
+                .andExpect(header().string("X-Frame-Options", "SAMEORIGIN"))
+                .andExpect(header().string("Content-Security-Policy", allOf(
+                        containsString("sandbox;"), containsString("frame-ancestors 'self'"))))
+                .andExpect(header().string("X-Content-Type-Options", "nosniff"))
+                .andReturn();
+
+        // The document is sent unchanged; the headers above (not escaping) keep it harmless.
+        assertThat(html(result)).isEqualTo(content);
+        // The security filter's headers are replaced, not duplicated: two policies would both be enforced.
+        assertThat(result.getResponse().getHeaders("Content-Security-Policy")).hasSize(1);
+        assertThat(result.getResponse().getHeaders("X-Frame-Options")).hasSize(1);
+
+        mvc.perform(get("/web/topic/t/nothing/html")).andExpect(status().isNotFound());
     }
 
     @Test
@@ -234,6 +316,15 @@ class WebPageTest extends IntegrationTest {
         mvc.perform(get("/css/app.css")).andExpect(status().isOk());
         mvc.perform(get("/js/app.js")).andExpect(status().isOk())
                 .andExpect(content().string(not(containsString("innerHTML"))));
+    }
+
+    /** The server-rendered Markdown pane of a memo page. */
+    private static String markdownPane(String html) {
+        int start = html.indexOf("<div class=\"memo-markdown\"");
+        int end = html.indexOf("<!-- The HTML document", start);
+        assertThat(start).isNotNegative();
+        assertThat(end).isGreaterThan(start);
+        return html.substring(start, end);
     }
 
     private static String html(MvcResult result) throws Exception {
